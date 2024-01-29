@@ -1,9 +1,37 @@
-import React from 'react'
-import { useDispatch } from 'react-redux'
+import React, { useEffect, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { toggleMenu } from '../utils/appSlice'
+import axios from 'axios'
+import { YOUTUBE_SEARCH_API } from '../utils/contants'
+import { cacheResults } from '../utils/searchSlice'
 
 const Head = () => {
-    const dispatch=useDispatch()
+  const [searchQuery,setSearchQuery]=useState("")
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+
+  const searchCache=useSelector(store=>store.search)
+  const dispatch=useDispatch()
+
+  useEffect(()=>{
+    const timer=setTimeout(()=>{
+      if(searchCache[searchQuery]){
+        setSuggestions(searchCache[searchQuery])
+      }else{
+        getSearchSuggestion()
+      }
+    },200)
+  
+    return()=>{
+      clearTimeout(timer)
+    }
+  },[searchQuery])
+
+  const getSearchSuggestion=async()=>{
+    const data=await axios.get(YOUTUBE_SEARCH_API+searchQuery) 
+    dispatch(cacheResults({[searchQuery]:data.data[1]}))
+    setSuggestions(data.data[1])
+  }
     const toggleMenuHandler=()=>{
         dispatch(toggleMenu())
     }
@@ -29,11 +57,25 @@ const Head = () => {
           <input
             className="px-5 w-1/2 border border-gray-400 p-2 rounded-l-full"
             type="text"
+            onChange={(e)=>setSearchQuery(e.target.value)}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setShowSuggestions(false)}
           />
           <button className="border border-gray-400 px-5 py-2 rounded-r-full bg-gray-100">
             🔍
           </button>
         </div>
+        {showSuggestions && (
+          <div className="fixed bg-white py-2 px-2 w-[37rem] shadow-lg rounded-lg border border-gray-100">
+            <ul>
+              {suggestions.map((s) => (
+                <li key={s} className="py-2 px-3 shadow-sm hover:bg-gray-100">
+                  🔍 {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       <div className="col-span-1">
         <img
